@@ -30,8 +30,8 @@ async function onMenuClick(info: chrome.contextMenus.OnClickData, tab?: chrome.t
 
   const cmd: TabCommand =
     info.menuItemId === MENU_SELECTION
-      ? { type: 'translate-selection', targetLang: settings.targetLang, text: info.selectionText ?? '' }
-      : { type: 'toggle-page', targetLang: settings.targetLang };
+      ? { type: 'translate-selection', targetLang: settings.targetLang, style: settings.displayStyle, text: info.selectionText ?? '' }
+      : { type: 'toggle-page', targetLang: settings.targetLang, style: settings.displayStyle };
 
   try {
     await runInTab(tab.id, info.frameId ?? 0, cmd);
@@ -69,17 +69,17 @@ chrome.runtime.onConnect.addListener((port) => {
     }
     const controller = new AbortController();
     controllers.set(msg.id, controller);
-    void translate(msg.id, msg.text, controller.signal).finally(() => controllers.delete(msg.id));
+    void translate(msg, controller.signal).finally(() => controllers.delete(msg.id));
   });
 
-  async function translate(id: number, text: string, signal: AbortSignal) {
+  async function translate({ id, segments, page, history }: Extract<PortRequest, { type: 'translate' }>, signal: AbortSignal) {
     const post = (res: PortResponse) => {
       if (!signal.aborted) port.postMessage(res);
     };
     try {
       const settings = await loadSettings();
       const config = toProviderConfig(settings);
-      for await (const delta of translateStream({ config, text, targetLang: settings.targetLang, signal })) {
+      for await (const delta of translateStream({ config, segments, targetLang: settings.targetLang, page, history, signal })) {
         post({ type: 'delta', id, text: delta });
       }
       post({ type: 'done', id });

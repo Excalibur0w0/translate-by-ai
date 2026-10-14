@@ -1,4 +1,5 @@
 import { getPreset, type ProviderConfig } from '@translate-by-ai/core';
+import type { DisplayStyle } from './messages';
 
 export interface Settings {
   providerId: string;
@@ -8,6 +9,7 @@ export interface Settings {
   /** JSON 文本，保存原样以便用户编辑 */
   extraBody: string;
   targetLang: string;
+  displayStyle: DisplayStyle;
 }
 
 const openrouter = getPreset('openrouter')!;
@@ -19,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: openrouter.defaultModel,
   extraBody: formatExtraBody(openrouter.extraBody),
   targetLang: 'zh-CN',
+  displayStyle: 'underline',
 };
 
 const STORAGE_KEY = 'settings';

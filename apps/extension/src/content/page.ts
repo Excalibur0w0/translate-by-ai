@@ -4,13 +4,16 @@ import {
   childOf,
   createDisplayCache,
   createTranslationElement,
-  hasBlockBetween,
+  hasBreakBetween,
   hasLetters,
   insertAfter,
   insertionAnchor,
   isExcluded,
+  layoutFor,
   nearestBlock,
-  renderTranslation,
+  showError,
+  showLoading,
+  showText,
   textOfRange,
 } from './dom';
 import { CancelledError, type Translator } from './translator';
@@ -22,14 +25,33 @@ interface Segment {
   last: Node;
 }
 
+/** 一段待翻译的文字和它的译文元素 */
+interface Job {
+  text: string;
+  el: HTMLElement;
+  attempts: number;
+}
+
+/** 短于这个长度的段落翻译失败时不显示错误（菜单、按钮满屏红字反而干扰阅读） */
+const MIN_ERROR_TEXT_LENGTH = 50;
+
+/** 一次请求最多带多少段 / 多少字符；一屏内容通常一批就够 */
+const MAX_BATCH_SEGMENTS = 40;
+const MAX_BATCH_CHARS = 3000;
+
 /**
  * 整页双语翻译：把页面切成段落，段落进入视口附近时才翻译（省钱），
  * 译文插在每段原文下方；页面后续动态加载的内容也会被处理。
+ *
+ * 同时进入视口的段落合成一批、编号后一次请求翻译，一屏内容互为上下文；
+ * 批次之间排队依次发送，每批都带着本页会话的历史，所以整页术语前后一致。
  */
 export class PageTranslator {
   private active = false;
   private seen = new WeakSet<Node>();
   private pending = new Map<Element, Segment[]>();
+  private queue: Job[] = [];
+  private busy = false;
   private dirtyRoots = new Set<Element>();
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly io = new IntersectionObserver((entries) => this.onIntersect(entries), { rootMargin: '400px 0px' });
@@ -58,8 +80,10 @@ export class PageTranslator {
     this.mo.disconnect();
     clearTimeout(this.flushTimer);
     this.pending.clear();
+    this.queue = [];
     this.dirtyRoots.clear();
     this.translator.cancelAll();
+    this.translator.resetContext();
     for (const el of document.querySelectorAll(TAG)) el.remove();
   }
 
@@ -81,7 +105,7 @@ export class PageTranslator {
       this.seen.add(node);
       const block = nearestBlock(node.parentElement!, displayOf);
       const top = childOf(block, node);
-      if (current?.block === block && (current.last === top || !hasBlockBetween(current.last, top, displayOf))) {
+      if (current?.block === block && (current.last === top || !hasBreakBetween(current.last, top, displayOf))) {
         current.last = top;
       } else {
         current = { block, first: top, last: top };
@@ -116,15 +140,54 @@ export class PageTranslator {
         // 真正翻译时只取当前渲染出来的文字，块里隐藏的提示、表单步骤等不算
         const text = textOfRange(seg.first, seg.last, true);
         if (!this.worthTranslating(text)) continue;
-        const el = createTranslationElement('page');
-        insertAfter(el, insertionAnchor(block, seg.last, displayOf));
-        renderTranslation(
-          el,
-          (onUpdate) => this.translator.translate(text, onUpdate),
-          (err) => err instanceof CancelledError,
-        );
+        const layout = layoutFor(text);
+        const el = createTranslationElement('page', layout);
+        insertAfter(el, layout === 'inline' ? seg.last : insertionAnchor(block, seg.last, displayOf));
+        showLoading(el);
+        this.queue.push({ text, el, attempts: 0 });
       }
     }
+    this.pump();
+  }
+
+  /** 一次只发一批：等它完成、写入会话历史后再发下一批 */
+  private pump() {
+    if (this.busy || !this.active || this.queue.length === 0) return;
+    const batch = takeBatch(this.queue);
+    this.busy = true;
+    this.translator
+      .translate(
+        batch.map((job) => job.text),
+        (parts) => batch.forEach((job, i) => parts[i] && showText(job.el, parts[i])),
+      )
+      .then(
+        (parts) =>
+          batch.forEach((job, i) => {
+            if (parts[i]) showText(job.el, parts[i], true);
+            else if (job.attempts++ < 1) this.queue.push(job); // 模型漏了这一段：放回队列再试一次
+            else this.fail(job, '模型没有返回这一段的译文');
+          }),
+        (err: Error) => {
+          if (err instanceof CancelledError) return;
+          for (const job of batch) this.fail(job, err.message);
+        },
+      )
+      .finally(() => {
+        this.busy = false;
+        this.pump();
+      });
+  }
+
+  private fail(job: Job, message: string) {
+    if (job.text.length < MIN_ERROR_TEXT_LENGTH) job.el.remove();
+    else showError(job.el, message, () => this.retry(job));
+  }
+
+  private retry(job: Job) {
+    job.attempts = 0;
+    showLoading(job.el);
+    this.queue.push(job);
+    this.pump();
   }
 
   private worthTranslating(text: string): boolean {
@@ -153,4 +216,15 @@ export class PageTranslator {
       }, 500);
     }
   }
+}
+
+function takeBatch(queue: Job[]): Job[] {
+  let n = 0;
+  let chars = 0;
+  while (n < queue.length && n < MAX_BATCH_SEGMENTS) {
+    chars += queue[n]!.text.length;
+    if (n > 0 && chars > MAX_BATCH_CHARS) break;
+    n++;
+  }
+  return queue.splice(0, n);
 }

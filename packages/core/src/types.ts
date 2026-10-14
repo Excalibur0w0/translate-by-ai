@@ -14,3 +14,14 @@ export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
+
+/** 会话里已经完成的一轮：一批原文和对应的译文（下标一一对应） */
+export interface TranslationTurn {
+  sources: string[];
+  translations: string[];
+}
+
+export interface PageContext {
+  title?: string;
+  host?: string;
+}

@@ -41,6 +41,17 @@
           <select id="targetLang"></select>
         </label>
 
+        <div class="field">
+          <label for="displayStyle" class="field-label">译文样式</label>
+          <select id="displayStyle">
+            <option value="underline">虚线下划线</option>
+            <option value="weak">弱化（半透明）</option>
+            <option value="plain">无样式（与原文一致）</option>
+          </select>
+          <div id="stylePreview" class="preview"></div>
+          <small>短文本（菜单、按钮、短标题）的译文接在原文后面，长段落的译文另起一行。修改后下次右键翻译生效。</small>
+        </div>
+
         <label class="field">
           <span>额外请求参数（JSON，可选）</span>
           <textarea id="extraBody" rows="4" spellcheck="false" placeholder='{ "temperature": 0.3 }'></textarea>

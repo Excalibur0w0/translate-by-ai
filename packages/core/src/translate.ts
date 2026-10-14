@@ -1,23 +1,28 @@
 import { streamChatCompletion } from './client';
 import { getLanguage } from './languages';
-import { buildTranslateMessages } from './prompt';
-import type { ProviderConfig } from './types';
+import { buildTranslateMessages, parseNumbered } from './prompt';
+import type { PageContext, ProviderConfig, TranslationTurn } from './types';
 
 export interface TranslateParams {
   config: ProviderConfig;
-  text: string;
+  /** 一次请求要翻译的若干段 */
+  segments: string[];
   /** 语言代码，见 LANGUAGES */
   targetLang: string;
+  page?: PageContext;
+  history?: TranslationTurn[];
   signal?: AbortSignal;
 }
 
-export function translateStream({ config, text, targetLang, signal }: TranslateParams): AsyncGenerator<string> {
-  const messages = buildTranslateMessages(text, getLanguage(targetLang).englishName);
+/** 产出模型的原始编号输出增量，用 parseNumbered 拆回各段 */
+export function translateStream({ config, segments, targetLang, page, history, signal }: TranslateParams): AsyncGenerator<string> {
+  const messages = buildTranslateMessages(segments, getLanguage(targetLang).englishName, { page, history });
   return streamChatCompletion(config, messages, signal);
 }
 
-export async function translateText(params: TranslateParams): Promise<string> {
+/** 翻译一批文本，返回与 segments 一一对应的译文；模型漏掉的段为空字符串 */
+export async function translateSegments(params: TranslateParams): Promise<string[]> {
   let out = '';
   for await (const delta of translateStream(params)) out += delta;
-  return out.trim();
+  return parseNumbered(out, params.segments.length);
 }

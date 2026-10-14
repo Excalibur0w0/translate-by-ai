@@ -1,4 +1,5 @@
 import type { ContentApi, TabCommand } from '../shared/messages';
+import { setDisplayStyle } from './dom';
 import { PageTranslator } from './page';
 import { translateSelection } from './selection';
 import { PortTranslator } from './translator';
@@ -21,6 +22,7 @@ function createContentApi(): ContentApi {
       translator.disconnect();
     },
     handle(cmd: TabCommand) {
+      setDisplayStyle(cmd.style ?? 'underline');
       if (cmd.type === 'translate-selection') {
         translateSelection(translator, cmd.text);
       } else if (page) {

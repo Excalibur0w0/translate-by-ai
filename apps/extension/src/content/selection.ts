@@ -7,7 +7,9 @@ import {
   insertionAnchor,
   isBlockLevel,
   nearestBlock,
-  renderTranslation,
+  showError,
+  showLoading,
+  showText,
   type DisplayOf,
 } from './dom';
 import { CancelledError, type Translator } from './translator';
@@ -46,11 +48,17 @@ export function translateSelection(translator: Translator, fallbackText: string)
     el = createTranslationElement('selection');
     insertAfter(el, anchor);
   }
-  renderTranslation(
-    el,
-    (onUpdate) => translator.translate(text, onUpdate),
-    (err) => err instanceof CancelledError,
-  );
+
+  const run = () => {
+    showLoading(el);
+    translator
+      .translate([text], (parts) => parts[0] && showText(el, parts[0]))
+      .then(
+        ([translation]) => (translation ? showText(el, translation, true) : showError(el, '模型没有返回译文', run)),
+        (err: Error) => err instanceof CancelledError || showError(el, err.message, run),
+      );
+  };
+  run();
 }
 
 /** 选区中最后一个有内容的文本节点（三击选中段落时，选区终点常落在下一段的开头，需要排除） */

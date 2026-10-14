@@ -1,4 +1,6 @@
-import { LANGUAGES, PROVIDER_PRESETS, getPreset, translateStream } from '@translate-by-ai/core';
+import { LANGUAGES, PROVIDER_PRESETS, getPreset, parseNumbered, translateStream } from '@translate-by-ai/core';
+import { createTranslationElement, layoutFor, setDisplayStyle, showText } from '../content/dom';
+import type { DisplayStyle } from '../shared/messages';
 import { formatExtraBody, loadSettings, saveSettings, toProviderConfig, type Settings } from '../shared/settings';
 
 const TEST_TEXT = 'Large language models make it easy to read the web in your own language.';
@@ -12,6 +14,7 @@ const fields = {
   model: $<HTMLInputElement>('model'),
   targetLang: $<HTMLSelectElement>('targetLang'),
   extraBody: $<HTMLTextAreaElement>('extraBody'),
+  displayStyle: $<HTMLSelectElement>('displayStyle'),
 };
 const apiKeyLink = $<HTMLAnchorElement>('apiKeyLink');
 const testButton = $<HTMLButtonElement>('test');
@@ -28,13 +31,39 @@ function readForm(): Settings {
     model: fields.model.value.trim(),
     targetLang: fields.targetLang.value,
     extraBody: fields.extraBody.value,
+    displayStyle: fields.displayStyle.value as DisplayStyle,
   };
 }
 
 function fillForm(s: Settings) {
   for (const key of Object.keys(fields) as Array<keyof Settings>) fields[key].value = s[key];
   updateApiKeyLink();
+  setDisplayStyle(s.displayStyle);
 }
+
+/** 用和网页里完全相同的元素和样式渲染预览 */
+function renderPreview() {
+  const samples = [
+    { tag: 'h3', source: 'Getting started', translation: '入门指南' },
+    {
+      tag: 'p',
+      source: 'Large language models make it easy to read the web in your own language.',
+      translation: '大语言模型让你可以轻松地用自己的语言阅读网页。',
+    },
+  ];
+  const box = $<HTMLDivElement>('stylePreview');
+  for (const { tag, source, translation } of samples) {
+    const host = document.createElement(tag);
+    host.textContent = source;
+    const el = createTranslationElement('page', layoutFor(source));
+    showText(el, translation, true);
+    host.append(el);
+    box.append(host);
+  }
+}
+
+renderPreview();
+fields.displayStyle.addEventListener('change', () => setDisplayStyle(fields.displayStyle.value as DisplayStyle));
 
 function updateApiKeyLink() {
   const url = getPreset(fields.providerId.value)?.apiKeyUrl;
@@ -104,9 +133,9 @@ testButton.addEventListener('click', async () => {
   try {
     validate(settings);
     await permission;
-    let text = '';
-    for await (const delta of translateStream({ config: toProviderConfig(settings), text: TEST_TEXT, targetLang: settings.targetLang })) {
-      output.textContent = (text += delta).trimStart();
+    let raw = '';
+    for await (const delta of translateStream({ config: toProviderConfig(settings), segments: [TEST_TEXT], targetLang: settings.targetLang })) {
+      output.textContent = parseNumbered((raw += delta), 1)[0]!;
     }
     setStatus(`成功，用时 ${((performance.now() - started) / 1000).toFixed(1)} 秒（测试不会自动保存）`, 'ok');
   } catch (err) {
