@@ -51,17 +51,31 @@ apps/extension       Chrome MV3 插件
   static             manifest.json、options.html/css（构建时原样拷贝）
 ```
 
-## 开始使用
+## 安装
+
+需要 Chrome 120 及以上。
+
+### 从 Release 安装（推荐）
+
+1. 在 [Releases](https://github.com/Excalibur0w0/translate-by-ai/releases/latest) 下载 `translate-by-ai-v*.zip`，解压到一个固定的位置（Chrome 会一直从这个文件夹加载插件，之后不要删除或移动它）。
+2. 打开 `chrome://extensions`，开启右上角的「开发者模式」。
+3. 点击「加载已解压的扩展程序」，选择解压出来的文件夹（里面直接就是 `manifest.json`）。
+
+升级时下载新版本，解压覆盖原来的文件夹，再到 `chrome://extensions` 点这个插件的刷新按钮。
+
+### 从源码构建
 
 ```bash
 pnpm install
 pnpm build          # 产物在 apps/extension/dist
 ```
 
-1. 打开 `chrome://extensions`，开启「开发者模式」。
-2. 「加载已解压的扩展程序」，选择 `apps/extension/dist`。
-3. 点击工具栏上的扩展图标打开设置页，填入 OpenRouter API Key（[获取](https://openrouter.ai/keys)），点「测试翻译」确认可用后保存。
-4. 在任意网页右键即可使用。
+然后按上面第 2、3 步加载 `apps/extension/dist`。
+
+## 开始使用
+
+1. 点击工具栏上的「AI 翻译」图标打开设置页，填入 OpenRouter API Key（[获取](https://openrouter.ai/keys)），点「测试翻译」确认可用后保存。
+2. 在任意网页右键即可使用：选中文字时是「用 AI 翻译「…」」，在页面空白处是「用 AI 翻译此页面」。
 
 > 第一次右键时如果还没配置 Key，会自动打开设置页。
 
@@ -87,6 +101,16 @@ pnpm typecheck
 - 新增服务商预设：编辑 `packages/core/src/providers.ts`。
 - 新增目标语言：编辑 `packages/core/src/languages.ts`。
 - 译文样式、换行规则、网站特殊规则：`apps/extension/src/content/dom.ts`（`CSS`、`layoutFor`、`SITE_RULES`）。
+
+### 发布新版本
+
+1. 修改 `apps/extension/static/manifest.json` 里的 `version`（打包和 Release 都以它为准）。
+2. 打包：`pnpm package`，生成 `release/translate-by-ai-v<版本>.zip`。
+3. 提交并推送后创建 Release：
+
+   ```bash
+   gh release create v<版本> release/translate-by-ai-v<版本>.zip --title "v<版本>" --notes "更新说明"
+   ```
 
 ## 权限说明
 

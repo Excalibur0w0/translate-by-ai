@@ -6,6 +6,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm --filter @translate-by-ai/extension dev",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "package": "pnpm build && node scripts/package.mjs"
   }
 }
