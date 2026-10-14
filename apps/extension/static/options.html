@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 翻译 · 设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>AI 翻译</h1>
+        <p>在网页上右键选择「用 AI 翻译」，译文会显示在原文下方。这里配置要调用的模型服务。</p>
+      </header>
+
+      <form id="form" autocomplete="off">
+        <label class="field">
+          <span>服务商</span>
+          <select id="providerId"></select>
+        </label>
+
+        <label class="field">
+          <span>API 地址</span>
+          <input id="baseUrl" type="url" required placeholder="https://openrouter.ai/api/v1" />
+          <small>任意 OpenAI 兼容接口的 base URL，会请求 <code>{API 地址}/chat/completions</code>。</small>
+        </label>
+
+        <label class="field">
+          <span>API Key <a id="apiKeyLink" target="_blank" rel="noreferrer" hidden>获取 Key ↗</a></span>
+          <input id="apiKey" type="password" placeholder="sk-..." />
+          <small>只保存在本机浏览器里，不会同步，也不会暴露给网页。</small>
+        </label>
+
+        <label class="field">
+          <span>模型</span>
+          <input id="model" required placeholder="deepseek/deepseek-v4.1-flash" />
+        </label>
+
+        <label class="field">
+          <span>目标语言</span>
+          <select id="targetLang"></select>
+        </label>
+
+        <label class="field">
+          <span>额外请求参数（JSON，可选）</span>
+          <textarea id="extraBody" rows="4" spellcheck="false" placeholder='{ "temperature": 0.3 }'></textarea>
+          <small>会合并进请求体。OpenRouter 预设默认关闭推理（reasoning），翻译更快也更省钱。</small>
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="primary">保存</button>
+          <button type="button" id="test">测试翻译</button>
+          <span id="status" role="status"></span>
+        </div>
+      </form>
+
+      <section id="testResult" hidden>
+        <div class="label">原文</div>
+        <p id="testSource"></p>
+        <div class="label">译文</div>
+        <p id="testOutput"></p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
