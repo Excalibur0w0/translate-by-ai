@@ -2,6 +2,24 @@
 
 一个 Chrome 插件：在网页上右键「用 AI 翻译」，调用**你自己配置的大模型**（默认 OpenRouter 上的 `deepseek/deepseek-v4.1-flash`），译文**追加在原文下方**，不替换原文。
 
+## 效果
+
+整页翻译（Wikipedia）：菜单、标签页、标题这类短文本的译文接在原文后面，长段落的译文另起一行，用虚线下划线和原文区分。
+
+![整页翻译：第一屏](docs/images/page-translation.png)
+
+正文部分：
+
+![整页翻译：正文](docs/images/page-translation-body.png)
+
+翻译中，每段先显示一个小圆圈，译文流式出现：
+
+![加载中](docs/images/loading.png)
+
+设置页可以切换译文样式（虚线下划线 / 弱化 / 无样式），带实时预览：
+
+![译文样式设置](docs/images/options-style.png)
+
 ## 功能
 
 - **划词翻译**：选中文字 → 右键「用 AI 翻译「…」」→ 译文出现在选区所在段落的下方。
